@@ -58,8 +58,20 @@ int main(int const ArgumentsCount, char const ** Arguments) {
     xcb_generic_event_t * Event;
     Event = xcb_wait_for_event(X);
     switch (Event->response_type & ~0x80) {
+    case XCB_BUTTON_PRESS:
+      fputs("BUTTON\n", stderr);
+      break;
+    case XCB_CLIENT_MESSAGE:
+      fputs("CLIENT\n", stderr);
+      break;
+    case XCB_CONFIGURE_NOTIFY:
+      fputs("CONFIGURE\n", stderr);
+      break;
+    case XCB_KEY_PRESS:
+      fputs("KEY\n", stderr);
+      break;
     default:
-      fputs("EVENT", stderr);
+      fputs("EVENT\n", stderr);
       free(Event);
       goto end;
     }
