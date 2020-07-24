@@ -1,4 +1,4 @@
-CFLAGS=-g # -Wall -W -Werror
+CFLAGS=-g -std=c99 # -Wall -W -Werror
 OBJS=wm.o
 LDFLAGS=-lxcb
 all: wm
