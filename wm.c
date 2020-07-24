@@ -6,11 +6,13 @@
 #include <xcb/xproto.h>
 int main(int const ArgumentsCount, char const ** Arguments) {
   /* Declare variables.  */
-  uint32_t Attributes[5];
+  uint32_t Values[5];
   xcb_connection_t * X;
   xcb_gcontext_t GraphicsContext;
+  xcb_generic_event_t * Event;
   xcb_get_geometry_reply_t *Geometry;
   xcb_query_pointer_reply_t * Pointer;
+  xcb_setup_t const * Setup;
   xcb_screen_iterator_t ScreenIterator;
   xcb_screen_t * Screen;
   xcb_void_cookie_t Cookie;
@@ -28,28 +30,25 @@ int main(int const ArgumentsCount, char const ** Arguments) {
   GraphicsContext = xcb_generate_id(X);
   /* Get screen information.  */
   {
-    xcb_setup_t const * Setup = xcb_get_setup(X);
+    Setup = xcb_get_setup(X);
     ScreenIterator = xcb_setup_roots_iterator(Setup);
   }
   Screen = ScreenIterator.data;
   Root = Screen->root;
-  {
-    int32_t Values[] = {XCB_GX_XOR, 1};
-    xcb_create_gc(X, GraphicsContext, Root,
-      XCB_GC_FUNCTION | XCB_GC_LINE_WIDTH, Values);
-  }
+  Values[0] = XCB_GX_XOR;
+  Values[1] = 1;
+  xcb_create_gc(X, GraphicsContext, Root,
+    XCB_GC_FUNCTION | XCB_GC_LINE_WIDTH, Values);
   /* Grab events.   */
-  {
-    int32_t Value = XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT |
-      XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
-    Cookie = xcb_change_window_attributes_checked(X, Root,
-      XCB_CW_EVENT_MASK, &Value);
-    if (xcb_request_check(X, Cookie)) {
-      /* Another window manager is running.  */
-      fputs("OCCUPIED\n", stderr);
-      xcb_disconnect(X);
-      exit(1);
-    }
+  Values[0] = XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT |
+    XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
+  Cookie = xcb_change_window_attributes_checked(X, Root,
+    XCB_CW_EVENT_MASK, Values);
+  if (xcb_request_check(X, Cookie)) {
+    /* Another window manager is running.  */
+    fputs("OCCUPIED\n", stderr);
+    xcb_disconnect(X);
+    exit(1);
   }
   /* Grab buttons.  */
   xcb_grab_button(X, 0, Root, XCB_EVENT_MASK_BUTTON_PRESS |
@@ -68,7 +67,6 @@ int main(int const ArgumentsCount, char const ** Arguments) {
   xcb_flush(X);
   /* Process events.  */
   for (;;) {
-    xcb_generic_event_t * Event;
     Event = xcb_wait_for_event(X);
     switch (Event->response_type & ~0x80) {
     case XCB_BUTTON_PRESS:
