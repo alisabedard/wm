@@ -1,26 +1,28 @@
 /* wm - X11 Window Manager */
-/* Based on jbwm and tinywm-xcb.  */
+/* Based on tinywm-xcb.  */
 #include <stdio.h>
 #include <stdlib.h>
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
 int main(int const ArgumentsCount, char const ** Arguments) {
   /* Declare variables.  */
-  int Status;
+  uint32_t Attributes[5];
   xcb_connection_t * X;
+  xcb_gcontext_t GraphicsContext;
+  xcb_get_geometry_reply_t *Geometry;
+  xcb_query_pointer_reply_t * Pointer;
   xcb_screen_iterator_t ScreenIterator;
   xcb_screen_t * Screen;
-  xcb_gcontext_t GraphicsContext;
-  xcb_window_t Root;
   xcb_void_cookie_t Cookie;
+  xcb_window_t Root;
+  xcb_window_t Window;
   /* Initialize variables.  */
-  Status = 0;
   /* Open connection.  */
   X = xcb_connect(NULL,NULL);
   if (xcb_connection_has_error(X)) {
     fputs("DISPLAY\n", stderr);
-    Status = 1;
-    goto end;
+    xcb_disconnect(X);
+    exit(1);
   }
   /* Generate IDs.  */
   GraphicsContext = xcb_generate_id(X);
@@ -45,14 +47,25 @@ int main(int const ArgumentsCount, char const ** Arguments) {
     if (xcb_request_check(X, Cookie)) {
       /* Another window manager is running.  */
       fputs("OCCUPIED\n", stderr);
-      Status = 1;
-      goto end;
+      xcb_disconnect(X);
+      exit(1);
     }
   }
   /* Grab buttons.  */
+  xcb_grab_button(X, 0, Root, XCB_EVENT_MASK_BUTTON_PRESS |
+    XCB_EVENT_MASK_BUTTON_RELEASE, XCB_GRAB_MODE_ASYNC,
+    XCB_GRAB_MODE_ASYNC, Root, XCB_NONE, 1, XCB_MOD_MASK_1);
+  xcb_grab_button(X, 0, Root, XCB_EVENT_MASK_BUTTON_PRESS |
+    XCB_EVENT_MASK_BUTTON_RELEASE, XCB_GRAB_MODE_ASYNC,
+    XCB_GRAB_MODE_ASYNC, Root, XCB_NONE, 3, XCB_MOD_MASK_1);
+  xcb_grab_button(X, 0, Root, XCB_EVENT_MASK_BUTTON_PRESS |
+    XCB_EVENT_MASK_BUTTON_RELEASE, XCB_GRAB_MODE_ASYNC,
+    XCB_GRAB_MODE_ASYNC, Root, XCB_NONE, 1, XCB_NONE);
   /* Grab keys.  */
-  Cookie = xcb_grab_key(X, 1, Root, XCB_MOD_MASK_4, XCB_GRAB_ANY,
+  Cookie = xcb_grab_key(X, 1, Root, XCB_MOD_MASK_CONTROL |
+    XCB_MOD_MASK_1, XCB_GRAB_ANY,
     XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+  xcb_flush(X);
   /* Process events.  */
   for (;;) {
     xcb_generic_event_t * Event;
@@ -70,14 +83,17 @@ int main(int const ArgumentsCount, char const ** Arguments) {
     case XCB_KEY_PRESS:
       fputs("KEY\n", stderr);
       break;
+    case XCB_MOTION_NOTIFY:
+      fputs("MOTION\n", stderr);
+      Pointer = xcb_query_pointer_reply(X, xcb_query_pointer(X, Root), 0);
+      Geometry = xcb_get_geometry_reply(X, xcb_get_geometry(X, Window), NULL);
     default:
       fputs("EVENT\n", stderr);
-      free(Event);
-      goto end;
+      /*free(Event);
+      goto end;*/
     }
     free(Event);
   }
-  end:
   xcb_disconnect(X);
-  return Status;
+  return 0;
 }
