@@ -78,15 +78,22 @@ int main(int const ArgumentsCount, char const ** Arguments) {
     case XCB_BUTTON_PRESS:
       fputs("BUTTON\n", stderr);
       ButtonPress = (xcb_button_press_event_t*)Event;
+      fprintf(stderr, "%d %d %d", ButtonPress->event, ButtonPress->child,
+        ButtonPress->root);
       switch (ButtonPress->detail) {
-      case 0:
-        fputs("0\n", stderr);
-        break;
       case 1:
         fputs("1\n", stderr);
+        Values[0] = XCB_STACK_MODE_ABOVE;
+        xcb_configure_window(X, ButtonPress->child,
+          XCB_CONFIG_WINDOW_STACK_MODE, Values);
+        xcb_flush(X);
         break;
-      case 2:
-        fputs("2\n", stderr);
+      case 3:
+        fputs("3\n", stderr);
+        Values[0] = XCB_STACK_MODE_BELOW;
+        xcb_configure_window(X, ButtonPress->child,
+          XCB_CONFIG_WINDOW_STACK_MODE, Values);
+        xcb_flush(X);
         break;
       }
       break;
