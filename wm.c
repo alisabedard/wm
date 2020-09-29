@@ -4,6 +4,10 @@
 #include <stdlib.h>
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
+enum KeyCodeEnum {
+  Left=43, Down=44, Up=45, Right=46, Enter=36
+
+};
 int main(int const ArgumentsCount, char const ** Arguments) {
   /* Declare variables.  */
   uint32_t Values[5];
@@ -11,6 +15,7 @@ int main(int const ArgumentsCount, char const ** Arguments) {
   xcb_gcontext_t GraphicsContext;
   xcb_generic_event_t * Event;
   xcb_get_geometry_reply_t *Geometry;
+  xcb_key_press_event_t * KeyPress;
   xcb_query_pointer_reply_t * Pointer;
   xcb_setup_t const * Setup;
   xcb_screen_iterator_t ScreenIterator;
@@ -79,7 +84,21 @@ int main(int const ArgumentsCount, char const ** Arguments) {
       fputs("CONFIGURE\n", stderr);
       break;
     case XCB_KEY_PRESS:
-      fputs("KEY\n", stderr);
+      KeyPress = (xcb_key_press_event_t*)Event;
+      switch(KeyPress->detail) {
+        case Left:
+          break;
+        case Down:
+          break;
+        case Up:
+          break;
+        case Right:
+          break;
+        case Enter:
+          break;
+        default:
+          fprintf(stderr, "KEY %d", (int)KeyPress->detail);
+      }
       break;
     case XCB_MOTION_NOTIFY:
       fputs("MOTION\n", stderr);
@@ -87,8 +106,6 @@ int main(int const ArgumentsCount, char const ** Arguments) {
       Geometry = xcb_get_geometry_reply(X, xcb_get_geometry(X, Window), NULL);
     default:
       fputs("EVENT\n", stderr);
-      /*free(Event);
-      goto end;*/
     }
     free(Event);
   }
