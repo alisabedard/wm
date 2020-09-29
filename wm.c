@@ -5,7 +5,7 @@
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
 enum KeyCodeEnum {
-  Left=43, Down=44, Up=45, Right=46, Enter=36
+  Tab=23, Left=43, Down=44, Up=45, Right=46, Enter=36
 
 };
 int main(int const ArgumentsCount, char const ** Arguments) {
@@ -16,6 +16,7 @@ int main(int const ArgumentsCount, char const ** Arguments) {
   xcb_generic_event_t * Event;
   xcb_get_geometry_reply_t *Geometry;
   xcb_key_press_event_t * KeyPress;
+  xcb_button_press_event_t * ButtonPress;
   xcb_query_pointer_reply_t * Pointer;
   xcb_setup_t const * Setup;
   xcb_screen_iterator_t ScreenIterator;
@@ -76,6 +77,18 @@ int main(int const ArgumentsCount, char const ** Arguments) {
     switch (Event->response_type & ~0x80) {
     case XCB_BUTTON_PRESS:
       fputs("BUTTON\n", stderr);
+      ButtonPress = (xcb_button_press_event_t*)Event;
+      switch (ButtonPress->detail) {
+      case 0:
+        fputs("0\n", stderr);
+        break;
+      case 1:
+        fputs("1\n", stderr);
+        break;
+      case 2:
+        fputs("2\n", stderr);
+        break;
+      }
       break;
     case XCB_CLIENT_MESSAGE:
       fputs("CLIENT\n", stderr);
@@ -95,6 +108,8 @@ int main(int const ArgumentsCount, char const ** Arguments) {
         case Right:
           break;
         case Enter:
+          break;
+        case Tab:
           break;
         default:
           fprintf(stderr, "KEY %d", (int)KeyPress->detail);
