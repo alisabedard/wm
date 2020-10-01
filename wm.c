@@ -145,6 +145,7 @@ int main(int const ArgumentsCount, char const ** Arguments) {
     case XCB_BUTTON_RELEASE:
       xcb_ungrab_pointer(X, XCB_CURRENT_TIME);
       xcb_flush(X);
+      break;
     case XCB_KEY_PRESS:
       KeyPress = (xcb_key_press_event_t*)Event;
 #define DEBUG_XCB_KEY_PRESS
