@@ -10,7 +10,8 @@ enum KeyCodeEnum {
   Tab=23, Left=43, Down=44, Up=45, Right=46, Enter=36
 
 };
-int main(int const ArgumentsCount, char const ** Arguments) {
+int main(int const argc __attribute__((unused)),
+  char const ** argv __attribute__((unused))) {
   bool IsResizing;
   /* Declare variables. */
   uint32_t Values[5];
@@ -26,7 +27,6 @@ int main(int const ArgumentsCount, char const ** Arguments) {
   xcb_key_press_event_t * KeyPress;
   xcb_button_press_event_t * ButtonPress;
   xcb_motion_notify_event_t * Motion;
-  xcb_query_pointer_reply_t * Pointer;
   xcb_setup_t const * Setup;
   xcb_screen_iterator_t ScreenIterator;
   xcb_screen_t * Screen;
