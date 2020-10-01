@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
+#define WM_TERMINAL_COMMAND "xterm"
 enum KeyCodeEnum {
   Tab=23, Left=43, Down=44, Up=45, Right=46, Enter=36
 
@@ -34,6 +35,7 @@ int main(int const argc __attribute__((unused)),
   xcb_window_t Root;
   xcb_window_t Window;
   /* Initialize variables. */
+  Geometry = NULL;
   /* Open connection. */
   X = xcb_connect(NULL,NULL);
   if (xcb_connection_has_error(X)) {
@@ -81,8 +83,7 @@ int main(int const argc __attribute__((unused)),
     XCB_GRAB_MODE_ASYNC, Root, XCB_NONE, 3, XCB_MOD_MASK_1);
 
   /* Grab keys. */
-  Cookie = xcb_grab_key(X, 1, Root, XCB_MOD_MASK_CONTROL |
-    XCB_MOD_MASK_1, XCB_GRAB_ANY,
+  xcb_grab_key(X, 1, Root, XCB_MOD_MASK_CONTROL | XCB_MOD_MASK_1, XCB_GRAB_ANY,
     XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
   xcb_flush(X);
 
@@ -152,22 +153,11 @@ int main(int const argc __attribute__((unused)),
 #ifdef DEBUG_XCB_KEY_PRESS
       fprintf(stderr, "KEY %d\n", (int)KeyPress->detail);
 #endif /* DEBUG_XCB_KEY_PRESS */
-#if 0
       switch(KeyPress->detail) {
-      case Left:
-        break;
-      case Down:
-        break;
-      case Up:
-        break;
-      case Right:
-        break;
       case Enter:
-        break;
-      case Tab:
+        system(WM_TERMINAL_COMMAND "&");
         break;
       }
-#endif /* 0 */
       break;
     case XCB_MOTION_NOTIFY:
       Motion = (xcb_motion_notify_event_t *)Event;
