@@ -21,7 +21,6 @@ int main(int const argc __attribute__((unused)),
   short Start[2];
   uint16_t Mask;
   xcb_connection_t * X;
-  xcb_gcontext_t GraphicsContext;
   xcb_generic_event_t * Event;
   xcb_get_geometry_cookie_t GeometryCookie;
   xcb_get_geometry_reply_t *Geometry;
@@ -44,24 +43,14 @@ int main(int const argc __attribute__((unused)),
     exit(1);
   }
 
-  /* Generate IDs. */
-  GraphicsContext = xcb_generate_id(X);
-
   /* Get screen information. */
-  {
-    Setup = xcb_get_setup(X);
-    ScreenIterator = xcb_setup_roots_iterator(Setup);
-  }
+  Setup = xcb_get_setup(X);
+  ScreenIterator = xcb_setup_roots_iterator(Setup);
   Screen = ScreenIterator.data;
   Root = Screen->root;
-  Values[0] = XCB_GX_XOR;
-  Values[1] = 1;
-  xcb_create_gc(X, GraphicsContext, Root,
-    XCB_GC_FUNCTION | XCB_GC_LINE_WIDTH, Values);
 
   /* Grab events.  */
-  Values[0] = XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT |
-    XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
+  Values[0] = XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT;
   Cookie = xcb_change_window_attributes_checked(X, Root,
     XCB_CW_EVENT_MASK, Values);
   if (xcb_request_check(X, Cookie)) {
@@ -70,6 +59,8 @@ int main(int const argc __attribute__((unused)),
     xcb_disconnect(X);
     exit(1);
   }
+  Values[0] = 0;
+  xcb_change_window_attributes(X, Root, XCB_CW_EVENT_MASK, Values);
 
   /* Grab buttons. */
   xcb_grab_button(X, 0, Root, XCB_EVENT_MASK_BUTTON_PRESS |
