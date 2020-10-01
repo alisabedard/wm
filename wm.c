@@ -7,6 +7,10 @@
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
 #define WM_TERMINAL_COMMAND "xterm"
+/* Uncomment the following to use Alt as the hot key.  */
+/*  #define WM_MOD_MASK XCB_MOD_MASK_1 */
+/* Uncomment the following to use Super (Windows) as the hot key.  */
+#define WM_MOD_MASK XCB_MOD_MASK_4
 enum KeyCodeEnum {
   Tab=23, Left=43, Down=44, Up=45, Right=46, Enter=36
 };
@@ -60,11 +64,6 @@ int main(int const argc __attribute__((unused)),
     xcb_disconnect(X);
     exit(1);
   }
-#ifndef WM_HANDLE_CONFIGURE_REQUEST
-  /* Reset grabbed events.  */
-  Values[0] = 0;
-  xcb_change_window_attributes(X, Root, XCB_CW_EVENT_MASK, Values);
-#endif // ! WM_HANDLE_CONFIGURE_REQUEST
 
   /* Get existing windows, listen for enter event for sloppy focus.  */
   {
@@ -78,26 +77,30 @@ int main(int const argc __attribute__((unused)),
       Values[0] = XCB_EVENT_MASK_ENTER_WINDOW;
       xcb_change_window_attributes(X, Children[Length], XCB_CW_EVENT_MASK,
         Values);
+#ifdef WM_DEBUG_XCB_QUERY_TREE
       fprintf(stderr, "%d ", Children[Length]);
+#endif /* WM_DEBUG_XCB_QUERY_TREE */
     }
+#ifdef WM_DEBUG_XCB_QUERY_TREE
     fprintf(stderr, "\n");
+#endif /* WM_DEBUG_XCB_QUERY_TREE */
     free(Query);
   }
 
   /* Grab buttons. */
   xcb_grab_button(X, 0, Root, XCB_EVENT_MASK_BUTTON_PRESS |
     XCB_EVENT_MASK_BUTTON_RELEASE, XCB_GRAB_MODE_ASYNC,
-    XCB_GRAB_MODE_ASYNC, Root, XCB_NONE, 1, XCB_MOD_MASK_1);
+    XCB_GRAB_MODE_ASYNC, Root, XCB_NONE, 1, WM_MOD_MASK);
   xcb_grab_button(X, 0, Root, XCB_EVENT_MASK_BUTTON_PRESS |
     XCB_EVENT_MASK_BUTTON_RELEASE, XCB_GRAB_MODE_ASYNC,
-    XCB_GRAB_MODE_ASYNC, Root, XCB_NONE, 2, XCB_MOD_MASK_1);
+    XCB_GRAB_MODE_ASYNC, Root, XCB_NONE, 2, WM_MOD_MASK);
   xcb_grab_button(X, 0, Root, XCB_EVENT_MASK_BUTTON_PRESS |
     XCB_EVENT_MASK_BUTTON_RELEASE, XCB_GRAB_MODE_ASYNC,
-    XCB_GRAB_MODE_ASYNC, Root, XCB_NONE, 3, XCB_MOD_MASK_1);
+    XCB_GRAB_MODE_ASYNC, Root, XCB_NONE, 3, WM_MOD_MASK);
 
   /* Grab keys. */
-  xcb_grab_key(X, 1, Root, XCB_MOD_MASK_CONTROL | XCB_MOD_MASK_1, XCB_GRAB_ANY,
-    XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+  xcb_grab_key(X, 1, Root, WM_MOD_MASK, XCB_GRAB_ANY, XCB_GRAB_MODE_ASYNC,
+    XCB_GRAB_MODE_ASYNC);
   xcb_flush(X);
 
   /* Process events. */
@@ -174,7 +177,7 @@ int main(int const argc __attribute__((unused)),
     }
     case XCB_KEY_PRESS:
       KeyPress = (xcb_key_press_event_t*)Event;
-#define WM_DEBUG_XCB_KEY_PRESS
+      /* #define WM_DEBUG_XCB_KEY_PRESS */
 #ifdef WM_DEBUG_XCB_KEY_PRESS
       fprintf(stderr, "KEY %d\n", (int)KeyPress->detail);
 #endif /* WM_DEBUG_XCB_KEY_PRESS */
@@ -184,12 +187,14 @@ int main(int const argc __attribute__((unused)),
         break;
       }
       break;
-#ifdef WM_HANDLE_CONFIGURE_REQUEST
     case XCB_CONFIGURE_REQUEST: {
       xcb_configure_request_event_t * Configure;
       Configure = (xcb_configure_request_event_t *)Event;
       Window = Configure->window;
+      /* #define WM_DEBUG_XCB_CONFIGURE_REQUEST */
+#ifdef WM_DEBUG_XCB_CONFIGURE_REQUEST
       fprintf(stderr, "XCB_CONFIGURE_REQUEST\n");
+#endif /* WM_DEBUG_XCB_CONFIGURE_REQUEST */
       Values[0] = Configure->x;
       Values[1] = Configure->y;
       Values[2] = Configure->width;
@@ -198,14 +203,15 @@ int main(int const argc __attribute__((unused)),
         XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
       xcb_configure_window(X, Window, Mask, Values);
       /* Grab events.  */
+      Values[0] = XCB_EVENT_MASK_ENTER_WINDOW;
+      xcb_change_window_attributes(X, Window, XCB_CW_EVENT_MASK, Values);
       xcb_map_window(X, Window);
       xcb_flush(X);
       break;
     }
-#endif // WM_HANDLE_CONFIGURE_REQUEST
     case XCB_MOTION_NOTIFY:
       Motion = (xcb_motion_notify_event_t *)Event;
-      //#define WM_DEBUG_XCB_MOTION_NOTIFY
+      /* #define WM_DEBUG_XCB_MOTION_NOTIFY */
 #ifdef WM_DEBUG_XCB_MOTION_NOTIFY
       fprintf(stderr, "Window: %d, IsResizing:%d, Values[0]:%d, Values[1]:%d\n",
         Window, IsResizing, Values[0], Values[1]);
