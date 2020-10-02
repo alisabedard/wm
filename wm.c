@@ -97,6 +97,21 @@ static xcb_window_t getRoot(xcb_connection_t * X) {
   return Screen->root;
 }
 
+static void setEventMask(xcb_connection_t * X, xcb_window_t const Root) {
+  xcb_void_cookie_t Cookie;
+  uint32_t Value;
+  Value = XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT;
+  Cookie=xcb_change_window_attributes_checked(X, Root, XCB_CW_EVENT_MASK,
+    &Value);
+  /* Determine if another window manager is running.  */
+  if (xcb_request_check(X, Cookie)) {
+    /* Another window manager is running. */
+    fputs("OCCUPIED\n", stderr);
+    xcb_disconnect(X);
+    exit(1);
+  }
+}
+
 int main(int const argc __attribute__((unused)),
   char const ** argv __attribute__((unused))) {
   bool IsResizing;
@@ -112,7 +127,6 @@ int main(int const argc __attribute__((unused)),
   xcb_button_press_event_t * ButtonPress;
   xcb_motion_notify_event_t * Motion;
   xcb_query_tree_cookie_t QueryCookie;
-  xcb_void_cookie_t Cookie;
   xcb_window_t Root;
   xcb_window_t Window;
 
@@ -125,17 +139,7 @@ int main(int const argc __attribute__((unused)),
   }
   Root = getRoot(X);
   QueryCookie = xcb_query_tree(X, Root);
-
-  /* Determine if another window manager is running.  */
-  Values[0] = XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT;
-  Cookie=xcb_change_window_attributes_checked(X, Root, XCB_CW_EVENT_MASK,
-    Values);
-  if (xcb_request_check(X, Cookie)) {
-    /* Another window manager is running. */
-    fputs("OCCUPIED\n", stderr);
-    xcb_disconnect(X);
-    exit(1);
-  }
+  setEventMask(X, Root);
 
   processExisting(X, QueryCookie);
 
