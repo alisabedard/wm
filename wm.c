@@ -23,6 +23,14 @@ static inline void grabButton(xcb_connection_t * X, xcb_window_t const Root,
     XCB_GRAB_MODE_ASYNC, Root, XCB_NONE, Button, WM_MOD_MASK);
 }
 
+static void inductWindow(xcb_connection_t * X, xcb_window_t const Window) {
+  uint32_t Value;
+  /* Grab events.  */
+  Value = XCB_EVENT_MASK_ENTER_WINDOW;
+  xcb_change_window_attributes(X, Window, XCB_CW_EVENT_MASK, &Value);
+  xcb_map_window(X, Window);
+}
+
 static void processExisting(xcb_connection_t * X,
   xcb_query_tree_cookie_t const Cookie) {
   /* Get existing windows, listen for enter event for sloppy focus.  */
@@ -202,7 +210,8 @@ int main(int const argc __attribute__((unused)),
       Window = Configure->window;
       /* #define WM_DEBUG_XCB_CONFIGURE_REQUEST */
 #ifdef WM_DEBUG_XCB_CONFIGURE_REQUEST
-      fprintf(stderr, "XCB_CONFIGURE_REQUEST\n");
+      fprintf(stderr, "XCB_CONFIGURE_REQUEST %d %d %d %d\n",
+        Configure->x, Configure->y, Configure->width, Configure->height);
 #endif /* WM_DEBUG_XCB_CONFIGURE_REQUEST */
       Values[0] = Configure->x;
       Values[1] = Configure->y;
@@ -211,10 +220,18 @@ int main(int const argc __attribute__((unused)),
       Mask= XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
         XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
       xcb_configure_window(X, Window, Mask, Values);
-      /* Grab events.  */
-      Values[0] = XCB_EVENT_MASK_ENTER_WINDOW;
-      xcb_change_window_attributes(X, Window, XCB_CW_EVENT_MASK, Values);
-      xcb_map_window(X, Window);
+      inductWindow(X, Window);
+      break;
+    }
+    case XCB_MAP_REQUEST: {
+      xcb_map_request_event_t * Map;
+      /* #define WM_DEBUG_XCB_MAP_REQUEST */
+#ifdef WM_DEBUG_XCB_MAP_REQUEST
+      fprintf(stderr, "XCB_MAP_REQUEST\n");
+#endif /* WM_DEBUG_XCB_MAP_REQUEST */
+      Map = (xcb_map_request_event_t *)Event;
+      Window = Map->window;
+      inductWindow(X, Window);
       break;
     }
     case XCB_MOTION_NOTIFY:
