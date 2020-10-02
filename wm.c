@@ -112,6 +112,29 @@ static void setEventMask(xcb_connection_t * X, xcb_window_t const Root) {
   }
 }
 
+static xcb_window_t handleConfigureRequest(xcb_connection_t * X,
+  xcb_generic_event_t * Event) {
+  uint32_t Values[4];
+  xcb_window_t Window;
+  xcb_configure_request_event_t * Configure;
+  Configure = (xcb_configure_request_event_t *)Event;
+  Window = Configure->window;
+  /* #define WM_DEBUG_XCB_CONFIGURE_REQUEST */
+#ifdef WM_DEBUG_XCB_CONFIGURE_REQUEST
+  fprintf(stderr, "XCB_CONFIGURE_REQUEST %d %d %d %d\n",
+    Configure->x, Configure->y, Configure->width, Configure->height);
+#endif /* WM_DEBUG_XCB_CONFIGURE_REQUEST */
+  Values[0] = Configure->x;
+  Values[1] = Configure->y;
+  Values[2] = Configure->width;
+  Values[3] = Configure->height;
+  xcb_configure_window(X, Window, XCB_CONFIG_WINDOW_WIDTH |
+    XCB_CONFIG_WINDOW_HEIGHT | XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y,
+    Values);
+  inductWindow(X, Window);
+  return Window;
+}
+
 int main(int const argc __attribute__((unused)),
   char const ** argv __attribute__((unused))) {
   bool IsResizing;
@@ -211,25 +234,9 @@ int main(int const argc __attribute__((unused)),
         break;
       }
       break;
-    case XCB_CONFIGURE_REQUEST: {
-      xcb_configure_request_event_t * Configure;
-      Configure = (xcb_configure_request_event_t *)Event;
-      Window = Configure->window;
-      /* #define WM_DEBUG_XCB_CONFIGURE_REQUEST */
-#ifdef WM_DEBUG_XCB_CONFIGURE_REQUEST
-      fprintf(stderr, "XCB_CONFIGURE_REQUEST %d %d %d %d\n",
-        Configure->x, Configure->y, Configure->width, Configure->height);
-#endif /* WM_DEBUG_XCB_CONFIGURE_REQUEST */
-      Values[0] = Configure->x;
-      Values[1] = Configure->y;
-      Values[2] = Configure->width;
-      Values[3] = Configure->height;
-      Mask= XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
-        XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
-      xcb_configure_window(X, Window, Mask, Values);
-      inductWindow(X, Window);
+    case XCB_CONFIGURE_REQUEST:
+      Window = handleConfigureRequest(X, Event);
       break;
-    }
     case XCB_MAP_REQUEST: {
       xcb_map_request_event_t * Map;
       /* #define WM_DEBUG_XCB_MAP_REQUEST */
