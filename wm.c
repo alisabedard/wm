@@ -135,20 +135,69 @@ static xcb_window_t handleConfigureRequest(xcb_connection_t * X,
   return Window;
 }
 
+static xcb_window_t handleButtonPress(xcb_connection_t * X,
+  xcb_generic_event_t * Event, short Start[2], bool * IsResizing) {
+  xcb_button_press_event_t * ButtonPress;
+  xcb_window_t Root;
+  xcb_window_t Window;
+  ButtonPress = (xcb_button_press_event_t*)Event;
+  /* #define WM_DEBUG_XCB_BUTTON_PRESS */
+#ifdef WM_DEBUG_XCB_BUTTON_PRESS
+  fprintf(stderr, "%x %x %x %x %x\n", ButtonPress->event,
+    ButtonPress->child, ButtonPress->root, ButtonPress->state,
+    ButtonPress->detail);
+#endif /* WM_DEBUG_XCB_BUTTON_PRESS */
+  Root = ButtonPress->root;
+  Window = ButtonPress->child;
+  xcb_set_input_focus(X, XCB_INPUT_FOCUS_POINTER_ROOT, Window,
+    XCB_CURRENT_TIME);
+  if (Window) {
+    switch (ButtonPress->detail) {
+    case 1: /* move */
+      Start[0] = ButtonPress->event_x;
+      Start[1] = ButtonPress->event_y;
+      *IsResizing = false;
+      drag(X, Start, Root, Window, false);
+      break;
+    case 2: /* lower */
+      stack(X, Window, XCB_STACK_MODE_BELOW);
+      break;
+    case 3: /* resize */
+      *IsResizing = true;
+      drag(X, Start, Root, Window, true);
+      break;
+    }
+  }
+  return Window;
+}
+
+static void handleMotionNotify(xcb_connection_t * X,
+  xcb_generic_event_t * Event, short Start[2],
+  xcb_window_t const Window, bool const IsResizing){
+
+  xcb_motion_notify_event_t * Motion;
+  uint32_t Values[2];
+  Motion = (xcb_motion_notify_event_t *)Event;
+  /* #define WM_DEBUG_XCB_MOTION_NOTIFY */
+#ifdef WM_DEBUG_XCB_MOTION_NOTIFY
+  fprintf(stderr, "Window: %d, IsResizing:%d, Values[0]:%d, Values[1]:%d\n",
+    Window, IsResizing, Values[0], Values[1]);
+#endif /* WM_DEBUG_XCB_MOTION_NOTIFY */
+  Values[0] = Motion->event_x-Start[0];
+  Values[1] = Motion->event_y-Start[1];
+  xcb_configure_window(X, Window, 
+    IsResizing ? XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT
+    : XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, Values);
+}
+
 int main(int const argc __attribute__((unused)),
   char const ** argv __attribute__((unused))) {
-  bool IsResizing;
-  /* Declare variables. */
-  uint32_t Values[5];
   /* This is the offset from the top left corner of the window at which        
    * dragging starts. */
   short Start[2];
-  uint16_t Mask;
   xcb_connection_t * X;
-  xcb_generic_event_t * Event;
   xcb_key_press_event_t * KeyPress;
-  xcb_button_press_event_t * ButtonPress;
-  xcb_motion_notify_event_t * Motion;
+  bool IsResizing;
   xcb_query_tree_cookie_t QueryCookie;
   xcb_window_t Root;
   xcb_window_t Window;
@@ -178,36 +227,11 @@ int main(int const argc __attribute__((unused)),
 
   /* Process events. */
   for (;;) {
+    xcb_generic_event_t * Event;
     Event = xcb_wait_for_event(X);
     switch (Event->response_type & ~0x80) {
     case XCB_BUTTON_PRESS:
-      ButtonPress = (xcb_button_press_event_t*)Event;
-      /* #define WM_DEBUG_XCB_BUTTON_PRESS */
-#ifdef WM_DEBUG_XCB_BUTTON_PRESS
-      fprintf(stderr, "%x %x %x %x %x\n", ButtonPress->event,
-        ButtonPress->child, ButtonPress->root, ButtonPress->state,
-        ButtonPress->detail);
-#endif /* WM_DEBUG_XCB_BUTTON_PRESS */
-      Window = ButtonPress->child;
-      xcb_set_input_focus(X, XCB_INPUT_FOCUS_POINTER_ROOT, Window,
-        XCB_CURRENT_TIME);
-      if (Window) {
-        switch (ButtonPress->detail) {
-        case 1: /* move */
-          IsResizing = false;
-          Start[0] = ButtonPress->event_x;
-          Start[1] = ButtonPress->event_y;
-          drag(X, Start, Root, Window, IsResizing);
-          break;
-        case 2: /* lower */
-          stack(X, Window, XCB_STACK_MODE_BELOW);
-          break;
-        case 3: /* resize */
-          IsResizing = true;
-          drag(X, Start, Root, Window, IsResizing);
-          break;
-        }
-      }
+      Window = handleButtonPress(X, Event, Start, &IsResizing);
       break;
     case XCB_BUTTON_RELEASE:
       xcb_ungrab_pointer(X, XCB_CURRENT_TIME);
@@ -249,17 +273,7 @@ int main(int const argc __attribute__((unused)),
       break;
     }
     case XCB_MOTION_NOTIFY:
-      Motion = (xcb_motion_notify_event_t *)Event;
-      /* #define WM_DEBUG_XCB_MOTION_NOTIFY */
-#ifdef WM_DEBUG_XCB_MOTION_NOTIFY
-      fprintf(stderr, "Window: %d, IsResizing:%d, Values[0]:%d, Values[1]:%d\n",
-        Window, IsResizing, Values[0], Values[1]);
-#endif /* WM_DEBUG_XCB_MOTION_NOTIFY */
-      Values[0] = Motion->event_x-Start[0];
-      Values[1] = Motion->event_y-Start[1];
-      Mask=IsResizing ? XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT
-        : XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
-      xcb_configure_window(X, Window, Mask, Values);
+      handleMotionNotify(X, Event, Start, Window, IsResizing);
       break;
     }
     xcb_flush(X);
