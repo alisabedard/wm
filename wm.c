@@ -86,12 +86,23 @@ static void drag(xcb_connection_t * X, int16_t * Start, xcb_window_t const Root,
   free (Geometry);
 }
 
+static xcb_window_t getRoot(xcb_connection_t * X) {
+  xcb_screen_t * Screen;
+  xcb_screen_iterator_t ScreenIterator;
+  xcb_setup_t const * Setup;
+  /* Get screen information. */
+  Setup = xcb_get_setup(X);
+  ScreenIterator = xcb_setup_roots_iterator(Setup);
+  Screen = ScreenIterator.data;
+  return Screen->root;
+}
+
 int main(int const argc __attribute__((unused)),
   char const ** argv __attribute__((unused))) {
   bool IsResizing;
   /* Declare variables. */
   uint32_t Values[5];
-  /* This is the offset from the top left corner of the window at which
+  /* This is the offset from the top left corner of the window at which        
    * dragging starts. */
   short Start[2];
   uint16_t Mask;
@@ -101,9 +112,6 @@ int main(int const argc __attribute__((unused)),
   xcb_button_press_event_t * ButtonPress;
   xcb_motion_notify_event_t * Motion;
   xcb_query_tree_cookie_t QueryCookie;
-  xcb_setup_t const * Setup;
-  xcb_screen_iterator_t ScreenIterator;
-  xcb_screen_t * Screen;
   xcb_void_cookie_t Cookie;
   xcb_window_t Root;
   xcb_window_t Window;
@@ -115,12 +123,7 @@ int main(int const argc __attribute__((unused)),
     xcb_disconnect(X);
     exit(1);
   }
-
-  /* Get screen information. */
-  Setup = xcb_get_setup(X);
-  ScreenIterator = xcb_setup_roots_iterator(Setup);
-  Screen = ScreenIterator.data;
-  Root = Screen->root;
+  Root = getRoot(X);
   QueryCookie = xcb_query_tree(X, Root);
 
   /* Determine if another window manager is running.  */
