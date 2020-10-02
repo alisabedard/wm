@@ -185,9 +185,37 @@ static void handleMotionNotify(xcb_connection_t * X,
 #endif /* WM_DEBUG_XCB_MOTION_NOTIFY */
   Values[0] = Motion->event_x-Start[0];
   Values[1] = Motion->event_y-Start[1];
-  xcb_configure_window(X, Window, 
+  xcb_configure_window(X, Window,
     IsResizing ? XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT
     : XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, Values);
+}
+
+static xcb_window_t handleEnterNotify(xcb_connection_t * X,
+  xcb_generic_event_t * Event) {
+  xcb_enter_notify_event_t * Enter;
+  xcb_window_t Window;
+  Enter = (xcb_enter_notify_event_t *)Event;
+  Window = Enter->event;
+  xcb_set_input_focus(X, XCB_INPUT_FOCUS_POINTER_ROOT, Window,
+    XCB_CURRENT_TIME);
+  xcb_flush(X);
+  return Window;
+}
+
+static void handleKeyPress(xcb_connection_t * X __attribute__((unused)),
+  xcb_generic_event_t * Event) {
+  xcb_key_press_event_t * KeyPress;
+  KeyPress = (xcb_key_press_event_t*)Event;
+  /* #define WM_DEBUG_XCB_KEY_PRESS */
+#ifdef WM_DEBUG_XCB_KEY_PRESS
+  fprintf(stderr, "KEY %d\n", (int)KeyPress->detail);
+#endif /* WM_DEBUG_XCB_KEY_PRESS */
+  switch(KeyPress->detail) {
+  case Enter:
+    system(WM_TERMINAL_COMMAND "&");
+    break;
+  }
+
 }
 
 int main(int const argc __attribute__((unused)),
@@ -196,7 +224,6 @@ int main(int const argc __attribute__((unused)),
    * dragging starts. */
   short Start[2];
   xcb_connection_t * X;
-  xcb_key_press_event_t * KeyPress;
   bool IsResizing;
   xcb_query_tree_cookie_t QueryCookie;
   xcb_window_t Root;
@@ -237,26 +264,11 @@ int main(int const argc __attribute__((unused)),
       xcb_ungrab_pointer(X, XCB_CURRENT_TIME);
       xcb_flush(X);
       break;
-    case XCB_ENTER_NOTIFY: {
-      xcb_enter_notify_event_t * Enter;
-      Enter = (xcb_enter_notify_event_t *)Event;
-      Window = Enter->event;
-      xcb_set_input_focus(X, XCB_INPUT_FOCUS_POINTER_ROOT, Window,
-        XCB_CURRENT_TIME);
-      xcb_flush(X);
+    case XCB_ENTER_NOTIFY:
+      Window = handleEnterNotify(X, Event);
       break;
-    }
     case XCB_KEY_PRESS:
-      KeyPress = (xcb_key_press_event_t*)Event;
-      /* #define WM_DEBUG_XCB_KEY_PRESS */
-#ifdef WM_DEBUG_XCB_KEY_PRESS
-      fprintf(stderr, "KEY %d\n", (int)KeyPress->detail);
-#endif /* WM_DEBUG_XCB_KEY_PRESS */
-      switch(KeyPress->detail) {
-      case Enter:
-        system(WM_TERMINAL_COMMAND "&");
-        break;
-      }
+      handleKeyPress(X, Event);
       break;
     case XCB_CONFIGURE_REQUEST:
       Window = handleConfigureRequest(X, Event);
