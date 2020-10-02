@@ -174,7 +174,6 @@ static xcb_window_t handleButtonPress(xcb_connection_t * X,
 static void handleMotionNotify(xcb_connection_t * X,
   xcb_generic_event_t * Event, short Start[2],
   xcb_window_t const Window, bool const IsResizing){
-
   xcb_motion_notify_event_t * Motion;
   uint32_t Values[2];
   Motion = (xcb_motion_notify_event_t *)Event;
@@ -216,6 +215,19 @@ static void handleKeyPress(xcb_connection_t * X __attribute__((unused)),
     break;
   }
 
+}
+static xcb_window_t handleMapRequest(xcb_connection_t * X,
+  xcb_generic_event_t * Event) {
+  xcb_map_request_event_t * Map;
+  xcb_window_t Window;
+  /* #define WM_DEBUG_XCB_MAP_REQUEST */
+#ifdef WM_DEBUG_XCB_MAP_REQUEST
+  fprintf(stderr, "XCB_MAP_REQUEST\n");
+#endif /* WM_DEBUG_XCB_MAP_REQUEST */
+  Map = (xcb_map_request_event_t *)Event;
+  Window = Map->window;
+  inductWindow(X, Window);
+  return Window;
 }
 
 int main(int const argc __attribute__((unused)),
@@ -273,17 +285,9 @@ int main(int const argc __attribute__((unused)),
     case XCB_CONFIGURE_REQUEST:
       Window = handleConfigureRequest(X, Event);
       break;
-    case XCB_MAP_REQUEST: {
-      xcb_map_request_event_t * Map;
-      /* #define WM_DEBUG_XCB_MAP_REQUEST */
-#ifdef WM_DEBUG_XCB_MAP_REQUEST
-      fprintf(stderr, "XCB_MAP_REQUEST\n");
-#endif /* WM_DEBUG_XCB_MAP_REQUEST */
-      Map = (xcb_map_request_event_t *)Event;
-      Window = Map->window;
-      inductWindow(X, Window);
+    case XCB_MAP_REQUEST:
+      Window = handleMapRequest(X, Event);
       break;
-    }
     case XCB_MOTION_NOTIFY:
       handleMotionNotify(X, Event, Start, Window, IsResizing);
       break;
