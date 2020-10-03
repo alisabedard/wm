@@ -1,7 +1,6 @@
 /* wm - X11 Window Manager */
 /* Based on tinywm-xcb. */
 #include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <xcb/xcb.h>
@@ -17,8 +16,7 @@
 enum KeyCodeEnum {
   EscapeKey=9, TabKey=23, EnterKey=36, HKey=43, JKey=44, KKey=45, LKey=46
 };
-
-static inline void grabButton(xcb_connection_t * X, xcb_window_t const Root,
+static void grabButton(xcb_connection_t * X, xcb_window_t const Root,
   uint8_t const Button) {
   xcb_grab_button(X, 0, Root, XCB_EVENT_MASK_BUTTON_PRESS |
     XCB_EVENT_MASK_BUTTON_RELEASE, XCB_GRAB_MODE_ASYNC,
@@ -218,11 +216,59 @@ static xcb_window_t handleEnterNotify(xcb_connection_t * X,
   return Window;
 }
 
-static void handleKeyPress(xcb_connection_t * X __attribute__((unused)),
-  xcb_generic_event_t * Event) {
+static xcb_window_t goToNextWindow(xcb_connection_t * X,
+  xcb_window_t const Root, xcb_window_t CurrentWindow) {
+  xcb_get_window_attributes_cookie_t AttributesCookie;
+  xcb_get_window_attributes_reply_t * AttributesReply;
+  xcb_query_tree_cookie_t QueryCookie;
+  xcb_query_tree_reply_t * QueryReply;
+  xcb_window_t * Children;
+  xcb_window_t Window;
+  int Length;
+  int I;
+  bool IsViewable;
+  QueryCookie = xcb_query_tree(X, Root);
+  QueryReply = xcb_query_tree_reply(X, QueryCookie, NULL);
+  Children = xcb_query_tree_children(QueryReply);
+  Length = xcb_query_tree_children_length(QueryReply);
+  /* Find the current window's index. */
+  for (I = Length; I && Children[I] != CurrentWindow; --I)
+    ;
+  for (;;) {
+    /* Select the next window, cycling to first if necessary.  */
+    Window = Children[I++ < Length ? I : (I=0)];
+    if (Window != CurrentWindow) {
+      AttributesCookie = xcb_get_window_attributes(X, Window);
+      AttributesReply = xcb_get_window_attributes_reply(X, AttributesCookie,
+        NULL);
+      if (!AttributesReply)
+        continue;
+      IsViewable = AttributesReply->map_state == XCB_MAP_STATE_VIEWABLE;
+      free(AttributesReply);
+      if(IsViewable) {
+        stack(X, Window, XCB_STACK_MODE_ABOVE);
+        xcb_warp_pointer(X, XCB_NONE, Window, 0, 0, 0, 0, 0, 0);
+//#define WM_DEBUG_GOTONEXTWINDOW
+#ifdef WM_DEBUG_GOTONEXTWINDOW
+        fprintf(stderr, "CurrentWindow:%d, Window: %d, Root: %d, I: %d\n",
+          CurrentWindow, Window, Root, I);
+#endif // WM_DEBUG_GOTONEXTWINDOW
+        break;
+      }
+    }
+  }
+  free(QueryReply);
+  return Window;
+}
+
+/* Window is needed as a parameter because KeyPress->event is always
+ * the value of the root window.  Returning window allows the current
+ * window to be changed, specifically when doing tab window switching.  */
+static xcb_window_t handleKeyPress(xcb_connection_t * X,
+  xcb_generic_event_t * Event, xcb_window_t Window) {
   xcb_key_press_event_t * KeyPress;
   KeyPress = (xcb_key_press_event_t*)Event;
-  /*  #define WM_DEBUG_XCB_KEY_PRESS */
+//#define WM_DEBUG_XCB_KEY_PRESS
 #ifdef WM_DEBUG_XCB_KEY_PRESS
   fprintf(stderr, "KEY %d\n", (int)KeyPress->detail);
 #endif /* WM_DEBUG_XCB_KEY_PRESS */
@@ -239,8 +285,11 @@ static void handleKeyPress(xcb_connection_t * X __attribute__((unused)),
   case LKey:
     system(WM_LOCK_COMMAND "&");
     break;
+  case TabKey:
+    Window = goToNextWindow(X, KeyPress->root, Window);
+    break;
   }
-
+  return Window;
 }
 static xcb_window_t handleMapRequest(xcb_connection_t * X,
   xcb_generic_event_t * Event) {
@@ -306,7 +355,7 @@ int main(int const argc __attribute__((unused)),
       Window = handleEnterNotify(X, Event);
       break;
     case XCB_KEY_PRESS:
-      handleKeyPress(X, Event);
+      Window = handleKeyPress(X, Event, Window);
       break;
     case XCB_CONFIGURE_REQUEST:
       Window = handleConfigureRequest(X, Event);
