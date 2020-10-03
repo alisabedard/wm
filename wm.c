@@ -7,13 +7,15 @@
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
 #define WM_TERMINAL_COMMAND "xterm"
+#define WM_LOCK_COMMAND "slock"
+#define WM_XKILL_COMMAND "xkill"
 /* Uncomment the following to use Alt as the hot key.  */
 /*  #define WM_MOD_MASK XCB_MOD_MASK_1 */
 /* Uncomment the following to use Super (Windows) as the hot key.  */
 #define WM_MOD_MASK XCB_MOD_MASK_4
 
 enum KeyCodeEnum {
-  Tab=23, Left=43, Down=44, Up=45, Right=46, Enter=36
+  EscapeKey=9, TabKey=23, EnterKey=36, HKey=43, JKey=44, KKey=45, LKey=46
 };
 
 static inline void grabButton(xcb_connection_t * X, xcb_window_t const Root,
@@ -220,13 +222,22 @@ static void handleKeyPress(xcb_connection_t * X __attribute__((unused)),
   xcb_generic_event_t * Event) {
   xcb_key_press_event_t * KeyPress;
   KeyPress = (xcb_key_press_event_t*)Event;
-  /* #define WM_DEBUG_XCB_KEY_PRESS */
+  /*  #define WM_DEBUG_XCB_KEY_PRESS */
 #ifdef WM_DEBUG_XCB_KEY_PRESS
   fprintf(stderr, "KEY %d\n", (int)KeyPress->detail);
 #endif /* WM_DEBUG_XCB_KEY_PRESS */
   switch(KeyPress->detail) {
-  case Enter:
+  case EnterKey:
     system(WM_TERMINAL_COMMAND "&");
+    break;
+  case EscapeKey:
+    exit(0);
+    break;
+  case KKey:
+    system(WM_XKILL_COMMAND "&");
+    break;
+  case LKey:
+    system(WM_LOCK_COMMAND "&");
     break;
   }
 
