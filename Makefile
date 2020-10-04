@@ -1,6 +1,9 @@
 # We try to conform to the earliest possible standard of C in order
 # to ease running on older systems.  XCB uses C99 stdint, so we use that.
+# For ease of debugging, use:
 CFLAGS=-g -O0 -std=c99 -Wall -W -Werror
+# For minimal binary size, use:
+#CFLAGS=-Os -std=c99
 PROG=wm
 OBJS=${PROG}.o
 INSTALL=install
