@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
+/* Begin configuration.  */
 #define WM_TERMINAL_COMMAND "xterm"
 #define WM_LOCK_COMMAND "slock"
 #define WM_XKILL_COMMAND "xkill"
@@ -12,9 +13,12 @@
 /*  #define WM_MOD_MASK XCB_MOD_MASK_1 */
 /* Uncomment the following to use Super (Windows) as the hot key.  */
 #define WM_MOD_MASK XCB_MOD_MASK_4
-
+/* Show the key codes.  */
+#define WM_DEBUG_XCB_KEY_PRESS
+/* End Configuration */
 enum KeyCodeEnum {
-  EscapeKey=9, TabKey=23, EnterKey=36, HKey=43, JKey=44, KKey=45, LKey=46
+  EscapeKey=9, TabKey=23, EnterKey=36, HKey=43, JKey=44, KKey=45, LKey=46,
+  SpaceKey=65, UpKey=111, DownKey=116
 };
 static void grabButton(xcb_connection_t * X, xcb_window_t const Root,
   uint8_t const Button) {
@@ -101,14 +105,18 @@ static void drag(xcb_connection_t * X, int16_t * Start, xcb_window_t const Root,
   free (Geometry);
 }
 
-static xcb_window_t getRoot(xcb_connection_t * X) {
-  xcb_screen_t * Screen;
+static xcb_screen_t * getScreen(xcb_connection_t * X) {
   xcb_screen_iterator_t ScreenIterator;
   xcb_setup_t const * Setup;
   /* Get screen information. */
   Setup = xcb_get_setup(X);
   ScreenIterator = xcb_setup_roots_iterator(Setup);
-  Screen = ScreenIterator.data;
+  return ScreenIterator.data;
+}
+
+static inline xcb_window_t getRoot(xcb_connection_t * X) {
+  xcb_screen_t * Screen;
+  Screen = getScreen(X);
   return Screen->root;
 }
 
@@ -261,6 +269,22 @@ static xcb_window_t goToNextWindow(xcb_connection_t * X,
   return Window;
 }
 
+/* Make the window dimensions match the screen dimensions, and set the window
+ * position to 0, 0.  */
+static void maximizeWindow(xcb_connection_t * X, xcb_window_t const Window) {
+  xcb_screen_t * Screen;
+  uint32_t Values[5];
+  Screen = getScreen(X);
+  Values[0] = 0;
+  Values[1] = 0;
+  Values[2] = Screen->width_in_pixels;
+  Values[3] = Screen->height_in_pixels;
+  Values[4] = XCB_STACK_MODE_ABOVE;
+  xcb_configure_window(X, Window, XCB_CONFIG_WINDOW_WIDTH |
+    XCB_CONFIG_WINDOW_HEIGHT | XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
+    XCB_CONFIG_WINDOW_STACK_MODE, Values);
+}
+
 /* Window is needed as a parameter because KeyPress->event is always
  * the value of the root window.  Returning window allows the current
  * window to be changed, specifically when doing tab window switching.  */
@@ -285,12 +309,16 @@ static xcb_window_t handleKeyPress(xcb_connection_t * X,
   case LKey:
     system(WM_LOCK_COMMAND "&");
     break;
+  case SpaceKey:
+    maximizeWindow(X, Window);
+    break;
   case TabKey:
     Window = goToNextWindow(X, KeyPress->root, Window);
     break;
   }
   return Window;
 }
+
 static xcb_window_t handleMapRequest(xcb_connection_t * X,
   xcb_generic_event_t * Event) {
   xcb_map_request_event_t * Map;
