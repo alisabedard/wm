@@ -14,7 +14,7 @@
 /* Uncomment the following to use Super (Windows) as the hot key.  */
 #define WM_MOD_MASK XCB_MOD_MASK_4
 /* Show the key codes.  */
-#define WM_DEBUG_XCB_KEY_PRESS
+//#define WM_DEBUG_XCB_KEY_PRESS
 /* End Configuration */
 enum KeyCodeEnum {
   EscapeKey=9, TabKey=23, EnterKey=36, HKey=43, JKey=44, KKey=45, LKey=46,
@@ -297,6 +297,9 @@ static xcb_window_t handleKeyPress(xcb_connection_t * X,
   fprintf(stderr, "KEY %d\n", (int)KeyPress->detail);
 #endif /* WM_DEBUG_XCB_KEY_PRESS */
   switch(KeyPress->detail) {
+  case DownKey:
+    stack(X, Window, XCB_STACK_MODE_BELOW);
+    break;
   case EnterKey:
     system(WM_TERMINAL_COMMAND "&");
     break;
@@ -314,6 +317,9 @@ static xcb_window_t handleKeyPress(xcb_connection_t * X,
     break;
   case TabKey:
     Window = goToNextWindow(X, KeyPress->root, Window);
+    break;
+  case UpKey:
+    stack(X, Window, XCB_STACK_MODE_ABOVE);
     break;
   }
   return Window;
