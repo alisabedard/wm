@@ -23,8 +23,14 @@ Keyboard commands are loosely based on jbwm for familiarity.
 - Super-Down *Lower the current window.*
 - Super-Enter *Run xterm.*
 - Super-Escape *Quit.*
-- Super-K *Run xkill.*
-- Super-L *Run slock.*
+- Super-Q *Close the window.*
+- Super-H *Move window left.*
+- Super-J *Move window down.*
+- Super-K *Move window up.*
+- Super-L *Move window right.*
+- Super-X *Maximize horizontally.*
+- Super-Z *Maximize vertically.*
+- Super-P *Run slock.*
 - Super-Space *Maximize the current window.*
 - Super-Tab *Switch to the lowest window in the stacking order.*
 - Super-Up *Raise the current window.*

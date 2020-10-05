@@ -13,12 +13,12 @@
 /* Uncomment the following to use Super (Windows) as the hot key.  */
 #define WM_MOD_MASK XCB_MOD_MASK_4
 /* Show the key codes.  */
-//#define WM_DEBUG_XCB_KEY_PRESS
+#define WM_DEBUG_XCB_KEY_PRESS
 /* End Configuration */
+
 enum KeyCodeEnum {
-  EscapeKey=9, TabKey=23, QKey=24, EnterKey=36,
-  HKey=43, JKey=44, KKey=45, LKey=46,
-  SpaceKey=65, UpKey=111, DownKey=116
+  EscapeKey=9, TabKey=23, QKey=24, PKey=33,EnterKey=36, HKey=43, JKey=44,
+  KKey=45, LKey=46, ZKey=52, XKey=53, SpaceKey=65, UpKey=111, DownKey=116
 };
 
 static xcb_atom_t getAtom(xcb_connection_t * X, char const * Name) {
@@ -33,6 +33,20 @@ static xcb_atom_t getAtom(xcb_connection_t * X, char const * Name) {
   Value = Reply->atom;
   free(Reply);
   return Value;
+}
+
+static void moveWindowWithKey(xcb_connection_t * X, xcb_window_t const Window,
+  int16_t const DeltaX, int16_t const DeltaY) {
+  xcb_get_geometry_cookie_t Cookie;
+  xcb_get_geometry_reply_t * Reply;
+  uint32_t Values[4];
+  Cookie = xcb_get_geometry(X, Window);
+  Reply = xcb_get_geometry_reply(X, Cookie, NULL);
+  Values[0] = Reply->x + DeltaX;
+  Values[1] = Reply->y + DeltaY;
+  free(Reply);
+  xcb_configure_window(X, Window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y,
+    Values);
 }
 
 static void deleteWindow(xcb_connection_t * X, xcb_window_t const Window) {
@@ -60,17 +74,17 @@ static void grabButton(xcb_connection_t * X, xcb_window_t const Root,
   xcb_grab_button(X, 0, Root, XCB_EVENT_MASK_BUTTON_PRESS |
     XCB_EVENT_MASK_BUTTON_RELEASE, XCB_GRAB_MODE_ASYNC,
     XCB_GRAB_MODE_ASYNC, Root, XCB_NONE, Button, WM_MOD_MASK);
-  /* Grab keys if Num Lock is on.  */
+  /* Grab button if Num Lock is on.  */
   xcb_grab_button(X, 0, Root, XCB_EVENT_MASK_BUTTON_PRESS |
     XCB_EVENT_MASK_BUTTON_RELEASE, XCB_GRAB_MODE_ASYNC,
     XCB_GRAB_MODE_ASYNC, Root, XCB_NONE, Button, WM_MOD_MASK |
     XCB_MOD_MASK_2);
-  /* Grab keys if Caps Lock is on.  */
+  /* Grab button if Caps Lock is on.  */
   xcb_grab_button(X, 0, Root, XCB_EVENT_MASK_BUTTON_PRESS |
     XCB_EVENT_MASK_BUTTON_RELEASE, XCB_GRAB_MODE_ASYNC,
     XCB_GRAB_MODE_ASYNC, Root, XCB_NONE, Button, WM_MOD_MASK |
     XCB_MOD_MASK_LOCK);
-  /* Grab keys if Num Lock and Caps Lock are on.  */
+  /* Grab button if Num Lock and Caps Lock are on.  */
   xcb_grab_button(X, 0, Root, XCB_EVENT_MASK_BUTTON_PRESS |
     XCB_EVENT_MASK_BUTTON_RELEASE, XCB_GRAB_MODE_ASYNC,
     XCB_GRAB_MODE_ASYNC, Root, XCB_NONE, Button, WM_MOD_MASK |
@@ -305,21 +319,26 @@ static xcb_window_t goToNextWindow(xcb_connection_t * X,
 }
 
 /* Make the window dimensions match the screen dimensions, and set the window
- * position to 0, 0.  */
-static void maximizeWindow(xcb_connection_t * X, xcb_window_t const Window) {
+ * position to 0, 0.  Specify XCB_CONFIG_WINDOW_* in Mask.  */
+static inline void maximizeWindow(xcb_connection_t * X,
+  xcb_window_t const Window, uint32_t Mask) {
   xcb_screen_t * Screen;
+  uint8_t Index;
   uint32_t Values[5];
   Screen = getScreen(X);
-  Values[0] = 0;
-  Values[1] = 0;
-  Values[2] = Screen->width_in_pixels;
-  Values[3] = Screen->height_in_pixels;
-  Values[4] = XCB_STACK_MODE_ABOVE;
-  xcb_configure_window(X, Window, XCB_CONFIG_WINDOW_WIDTH |
-    XCB_CONFIG_WINDOW_HEIGHT | XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
-    XCB_CONFIG_WINDOW_STACK_MODE, Values);
+  Index = 0;
+  if (Mask & XCB_CONFIG_WINDOW_X)
+    Values[Index++] = 0;
+  if (Mask & XCB_CONFIG_WINDOW_Y)
+    Values[Index++] = 0;
+  if (Mask & XCB_CONFIG_WINDOW_WIDTH)
+    Values[Index++] = Screen->width_in_pixels;
+  if (Mask & XCB_CONFIG_WINDOW_HEIGHT)
+    Values[Index++] = Screen->height_in_pixels;
+  Values[Index++] = XCB_STACK_MODE_ABOVE;
+  Mask |= XCB_CONFIG_WINDOW_STACK_MODE;
+  xcb_configure_window(X, Window, Mask, &Values);
 }
-
 /* Window is needed as a parameter because KeyPress->event is always
  * the value of the root window.  Returning window allows the current
  * window to be changed, specifically when doing tab window switching.  */
@@ -331,6 +350,7 @@ static xcb_window_t handleKeyPress(xcb_connection_t * X,
 #ifdef WM_DEBUG_XCB_KEY_PRESS
   fprintf(stderr, "KEY %d\n", (int)KeyPress->detail);
 #endif /* WM_DEBUG_XCB_KEY_PRESS */
+  enum { MoveBy = 10 };
   switch(KeyPress->detail) {
   case DownKey:
     stack(X, Window, XCB_STACK_MODE_BELOW);
@@ -341,14 +361,33 @@ static xcb_window_t handleKeyPress(xcb_connection_t * X,
   case EscapeKey:
     exit(0);
     break;
+  case HKey:
+    moveWindowWithKey(X, Window, -MoveBy, 0);
+    break;
+  case JKey:
+    moveWindowWithKey(X, Window, 0, MoveBy);
+    break;
+  case KKey:
+    moveWindowWithKey(X, Window, 0, -MoveBy);
+    break;
   case LKey:
+    moveWindowWithKey(X, Window, MoveBy, 0);
+    break;
+  case PKey:
     system(WM_LOCK_COMMAND "&");
     break;
   case QKey:
     deleteWindow(X, Window);
     break;
+  case XKey:
+    maximizeWindow(X, Window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_WIDTH);
+    break;
+  case ZKey:
+    maximizeWindow(X, Window, XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_HEIGHT);
+    break;
   case SpaceKey:
-    maximizeWindow(X, Window);
+    maximizeWindow(X, Window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
+      XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT);
     break;
   case TabKey:
     Window = goToNextWindow(X, KeyPress->root, Window);
@@ -393,6 +432,8 @@ int main(int const argc __attribute__((unused)),
     exit(1);
   }
   Root = getRoot(X);
+  /* Initialize Window.  */
+  Window = Root;
   QueryCookie = xcb_query_tree(X, Root);
   setEventMask(X, Root);
 
@@ -406,7 +447,11 @@ int main(int const argc __attribute__((unused)),
   /* Grab keys. */
   xcb_grab_key(X, 1, Root, WM_MOD_MASK, XCB_GRAB_ANY, XCB_GRAB_MODE_ASYNC,
     XCB_GRAB_MODE_ASYNC);
+  xcb_grab_key(X, 1, Root, WM_MOD_MASK | XCB_MOD_MASK_SHIFT, XCB_GRAB_ANY,
+    XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+
   xcb_flush(X);
+
 
   /* Process events. */
   for (;;) {
