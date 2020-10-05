@@ -8,18 +8,53 @@
 /* Begin configuration.  */
 #define WM_TERMINAL_COMMAND "xterm"
 #define WM_LOCK_COMMAND "slock"
-#define WM_XKILL_COMMAND "xkill"
 /* Uncomment the following to use Alt as the hot key.  */
 /*  #define WM_MOD_MASK XCB_MOD_MASK_1 */
 /* Uncomment the following to use Super (Windows) as the hot key.  */
 #define WM_MOD_MASK XCB_MOD_MASK_4
 /* Show the key codes.  */
-//#define WM_DEBUG_XCB_KEY_PRESS
+#define WM_DEBUG_XCB_KEY_PRESS
 /* End Configuration */
 enum KeyCodeEnum {
-  EscapeKey=9, TabKey=23, EnterKey=36, HKey=43, JKey=44, KKey=45, LKey=46,
+  EscapeKey=9, TabKey=23, QKey=24, EnterKey=36,
+  HKey=43, JKey=44, KKey=45, LKey=46,
   SpaceKey=65, UpKey=111, DownKey=116
 };
+
+static xcb_atom_t getAtom(xcb_connection_t * X, char const * Name) {
+  xcb_atom_t Value;
+  xcb_intern_atom_cookie_t Cookie;
+  xcb_intern_atom_reply_t *Reply;
+  uint8_t Length;
+  for (Length = 0; Name[Length]; ++Length)
+    ;
+  Cookie = xcb_intern_atom(X, false, Length, Name);
+  Reply = xcb_intern_atom_reply(X, Cookie, NULL);
+  Value = Reply->atom;
+  free(Reply);
+  return Value;
+}
+
+static void deleteWindow(xcb_connection_t * X, xcb_window_t const Window) {
+  xcb_client_message_event_t Message;
+  xcb_atom_t const DeleteAtom = getAtom(X, "WM_DELETE_WINDOW");
+  xcb_atom_t const ProtocolsAtom = getAtom(X, "WM_PROTOCOLS");
+  Message.data.data32[0]=DeleteAtom;
+  Message.data.data32[1]=XCB_CURRENT_TIME;
+  Message.format=32;
+  Message.response_type = XCB_CLIENT_MESSAGE;
+  Message.sequence = 0;
+  Message.type=ProtocolsAtom;
+  Message.window=Window;
+  xcb_send_event(X, false, Window, XCB_EVENT_MASK_NO_EVENT, (char*)&Message);
+  xcb_flush(X);
+//#define WM_DEBUG_KILLWINDOW
+#ifdef WM_DEBUG_KILLWINDOW
+  fprintf(stderr, "ProtocolsAtom:%d, DeleteAtom:%d, Window:%d\n",
+    ProtocolsAtom, DeleteAtom, Window);
+#endif // WM_DEBUG_KILLWINDOW
+}
+
 static void grabButton(xcb_connection_t * X, xcb_window_t const Root,
   uint8_t const Button) {
   xcb_grab_button(X, 0, Root, XCB_EVENT_MASK_BUTTON_PRESS |
@@ -306,11 +341,11 @@ static xcb_window_t handleKeyPress(xcb_connection_t * X,
   case EscapeKey:
     exit(0);
     break;
-  case KKey:
-    system(WM_XKILL_COMMAND "&");
-    break;
   case LKey:
     system(WM_LOCK_COMMAND "&");
+    break;
+  case QKey:
+    deleteWindow(X, Window);
     break;
   case SpaceKey:
     maximizeWindow(X, Window);
