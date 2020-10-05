@@ -13,7 +13,7 @@
 /* Uncomment the following to use Super (Windows) as the hot key.  */
 #define WM_MOD_MASK XCB_MOD_MASK_4
 /* Show the key codes.  */
-#define WM_DEBUG_XCB_KEY_PRESS
+//#define WM_DEBUG_XCB_KEY_PRESS
 /* End Configuration */
 
 enum KeyCodeEnum {
