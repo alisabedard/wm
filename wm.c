@@ -70,7 +70,7 @@ static void deleteWindow(xcb_connection_t * X, xcb_window_t const Window) {
   Message.window=Window;
   xcb_send_event(X, false, Window, XCB_EVENT_MASK_NO_EVENT, (char*)&Message);
   xcb_flush(X);
-//#define WM_DEBUG_KILLWINDOW
+  //#define WM_DEBUG_KILLWINDOW
 #ifdef WM_DEBUG_KILLWINDOW
   fprintf(stderr, "ProtocolsAtom:%d, DeleteAtom:%d, Window:%d\n",
     ProtocolsAtom, DeleteAtom, Window);
@@ -281,17 +281,29 @@ static xcb_window_t handleEnterNotify(xcb_connection_t * X,
   return Window;
 }
 
+static bool getIsViewable(xcb_connection_t * X, xcb_window_t const Window) {
+  xcb_get_window_attributes_reply_t * AttributesReply;
+  xcb_get_window_attributes_cookie_t AttributesCookie;
+  bool Value;
+  AttributesCookie = xcb_get_window_attributes(X, Window);
+  AttributesReply = xcb_get_window_attributes_reply(X, AttributesCookie,
+    NULL);
+  if (AttributesReply) {
+    Value = AttributesReply->map_state == XCB_MAP_STATE_VIEWABLE;
+    free(AttributesReply);
+  } else
+    Value = false;
+  return Value;
+}
+
 static xcb_window_t goToNextWindow(xcb_connection_t * X,
   xcb_window_t const Root, xcb_window_t CurrentWindow) {
-  xcb_get_window_attributes_cookie_t AttributesCookie;
-  xcb_get_window_attributes_reply_t * AttributesReply;
   xcb_query_tree_cookie_t QueryCookie;
   xcb_query_tree_reply_t * QueryReply;
   xcb_window_t * Children;
   xcb_window_t Window;
   int Length;
   int I;
-  bool IsViewable;
   QueryCookie = xcb_query_tree(X, Root);
   QueryReply = xcb_query_tree_reply(X, QueryCookie, NULL);
   Children = xcb_query_tree_children(QueryReply);
@@ -303,17 +315,10 @@ static xcb_window_t goToNextWindow(xcb_connection_t * X,
     /* Select the next window, cycling to first if necessary.  */
     Window = Children[I++ < Length ? I : (I=0)];
     if (Window != CurrentWindow) {
-      AttributesCookie = xcb_get_window_attributes(X, Window);
-      AttributesReply = xcb_get_window_attributes_reply(X, AttributesCookie,
-        NULL);
-      if (!AttributesReply)
-        continue;
-      IsViewable = AttributesReply->map_state == XCB_MAP_STATE_VIEWABLE;
-      free(AttributesReply);
-      if(IsViewable) {
+      if(getIsViewable(X, Window)) {
         stack(X, Window, XCB_STACK_MODE_ABOVE);
         xcb_warp_pointer(X, XCB_NONE, Window, 0, 0, 0, 0, 0, 0);
-//#define WM_DEBUG_GOTONEXTWINDOW
+        //#define WM_DEBUG_GOTONEXTWINDOW
 #ifdef WM_DEBUG_GOTONEXTWINDOW
         fprintf(stderr, "CurrentWindow:%d, Window: %d, Root: %d, I: %d\n",
           CurrentWindow, Window, Root, I);
@@ -354,7 +359,7 @@ static xcb_window_t handleKeyPress(xcb_connection_t * X,
   xcb_generic_event_t * Event, xcb_window_t Window) {
   xcb_key_press_event_t * KeyPress;
   KeyPress = (xcb_key_press_event_t*)Event;
-//#define WM_DEBUG_XCB_KEY_PRESS
+  //#define WM_DEBUG_XCB_KEY_PRESS
 #ifdef WM_DEBUG_XCB_KEY_PRESS
   fprintf(stderr, "detail:%d, state:%d\n", (int)KeyPress->detail,
     KeyPress->state);
