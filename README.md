@@ -28,6 +28,10 @@ Keyboard commands are loosely based on jbwm for familiarity.
 - Super-J *Move window down.*
 - Super-K *Move window up.*
 - Super-L *Move window right.*
+- Control-Super-H *Shrinkwindow horizontally.*
+- Control-Super-J *Grow window vertically.*
+- Control-Super-K *Shrink window vertically.*
+- Control-Super-L *Grow window horizontally.*
 - Super-X *Maximize horizontally.*
 - Super-Z *Maximize vertically.*
 - Super-P *Run slock.*

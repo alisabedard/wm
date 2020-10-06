@@ -35,18 +35,26 @@ static xcb_atom_t getAtom(xcb_connection_t * X, char const * Name) {
   return Value;
 }
 
-static void moveWindowWithKey(xcb_connection_t * X, xcb_window_t const Window,
-  int16_t const DeltaX, int16_t const DeltaY) {
-  xcb_get_geometry_cookie_t Cookie;
+static void modifyRelatively(xcb_connection_t * X,
+  xcb_window_t const Window, int16_t const DeltaX, int16_t const DeltaY,
+  bool const IsResizing) {
   xcb_get_geometry_reply_t * Reply;
+  xcb_get_geometry_cookie_t Cookie;
   uint32_t Values[4];
+  uint32_t Mask;
   Cookie = xcb_get_geometry(X, Window);
   Reply = xcb_get_geometry_reply(X, Cookie, NULL);
-  Values[0] = Reply->x + DeltaX;
-  Values[1] = Reply->y + DeltaY;
+  if (IsResizing) {
+    Mask = XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT;
+    Values[0] = Reply->width + DeltaX;
+    Values[1] = Reply->height + DeltaY;
+  } else {
+    Mask = XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
+    Values[0] = Reply->x + DeltaX;
+    Values[1] = Reply->y + DeltaY;
+  }
   free(Reply);
-  xcb_configure_window(X, Window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y,
-    Values);
+  xcb_configure_window(X, Window, Mask, Values);
 }
 
 static void deleteWindow(xcb_connection_t * X, xcb_window_t const Window) {
@@ -348,7 +356,8 @@ static xcb_window_t handleKeyPress(xcb_connection_t * X,
   KeyPress = (xcb_key_press_event_t*)Event;
 //#define WM_DEBUG_XCB_KEY_PRESS
 #ifdef WM_DEBUG_XCB_KEY_PRESS
-  fprintf(stderr, "KEY %d\n", (int)KeyPress->detail);
+  fprintf(stderr, "detail:%d, state:%d\n", (int)KeyPress->detail,
+    KeyPress->state);
 #endif /* WM_DEBUG_XCB_KEY_PRESS */
   enum { MoveBy = 10 };
   switch(KeyPress->detail) {
@@ -362,16 +371,20 @@ static xcb_window_t handleKeyPress(xcb_connection_t * X,
     exit(0);
     break;
   case HKey:
-    moveWindowWithKey(X, Window, -MoveBy, 0);
+    modifyRelatively(X, Window, -MoveBy, 0, KeyPress->state &
+      XCB_KEY_BUT_MASK_CONTROL);
     break;
   case JKey:
-    moveWindowWithKey(X, Window, 0, MoveBy);
+    modifyRelatively(X, Window, 0, MoveBy, KeyPress->state &
+      XCB_KEY_BUT_MASK_CONTROL);
     break;
   case KKey:
-    moveWindowWithKey(X, Window, 0, -MoveBy);
+    modifyRelatively(X, Window, 0, -MoveBy, KeyPress->state &
+      XCB_KEY_BUT_MASK_CONTROL);
     break;
   case LKey:
-    moveWindowWithKey(X, Window, MoveBy, 0);
+    modifyRelatively(X, Window, MoveBy, 0, KeyPress->state &
+      XCB_KEY_BUT_MASK_CONTROL);
     break;
   case PKey:
     system(WM_LOCK_COMMAND "&");
