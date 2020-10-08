@@ -8,6 +8,7 @@ PROG=wm
 OBJS=${PROG}.o
 INSTALL=install
 LDFLAGS=-lxcb
+DESTDIR=/usr/local
 installpath=${DESTDIR}${PREFIX}
 bindir=${installpath}/bin
 docdir=${installpath}/share/doc/${PROG}
