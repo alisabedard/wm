@@ -55,6 +55,8 @@ static void modifyRelatively(xcb_connection_t * X,
   }
   free(Reply);
   xcb_configure_window(X, Window, Mask, Values);
+  // Prevent a window below this one from getting focus.
+  xcb_warp_pointer(X, XCB_NONE, Window, 0,0,0,0,0,0);
 }
 
 static void deleteWindow(xcb_connection_t * X, xcb_window_t const Window) {
@@ -472,7 +474,7 @@ int main(int const argc __attribute__((unused)),
   xcb_grab_key(X, 1, Root, WM_MOD_MASK | XCB_MOD_MASK_LOCK, XCB_GRAB_ANY,
     XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
   xcb_grab_key(X, 1, Root, WM_MOD_MASK | XCB_MOD_MASK_SHIFT | XCB_MOD_MASK_2,
-     XCB_GRAB_ANY, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+    XCB_GRAB_ANY, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
   xcb_grab_key(X, 1, Root, WM_MOD_MASK | XCB_MOD_MASK_SHIFT | XCB_MOD_MASK_2 |
     XCB_MOD_MASK_LOCK, XCB_GRAB_ANY, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
   xcb_grab_key(X, 1, Root, WM_MOD_MASK | XCB_MOD_MASK_2 | XCB_MOD_MASK_LOCK,
