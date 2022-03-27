@@ -8,10 +8,12 @@
 /* Begin configuration.  */
 #define WM_TERMINAL_COMMAND "xterm"
 #define WM_LOCK_COMMAND "slock"
+/* Use  Ctrl + Alt as the hot key. */
+#define WM_MOD_MASK (XCB_MOD_MASK_1|XCB_MOD_MASK_CONTROL)
 /* Uncomment the following to use Alt as the hot key.  */
 /*  #define WM_MOD_MASK XCB_MOD_MASK_1 */
 /* Uncomment the following to use Super (Windows) as the hot key.  */
-#define WM_MOD_MASK XCB_MOD_MASK_4
+/* #define WM_MOD_MASK XCB_MOD_MASK_4 */
 /* Show the key codes.  */
 //#define WM_DEBUG_XCB_KEY_PRESS
 /* End Configuration */
@@ -379,19 +381,19 @@ static xcb_window_t handleKeyPress(xcb_connection_t * X,
     break;
   case HKey:
     modifyRelatively(X, Window, -MoveBy, 0, KeyPress->state &
-      XCB_KEY_BUT_MASK_CONTROL);
+      XCB_KEY_BUT_MASK_SHIFT);
     break;
   case JKey:
     modifyRelatively(X, Window, 0, MoveBy, KeyPress->state &
-      XCB_KEY_BUT_MASK_CONTROL);
+      XCB_KEY_BUT_MASK_SHIFT);
     break;
   case KKey:
     modifyRelatively(X, Window, 0, -MoveBy, KeyPress->state &
-      XCB_KEY_BUT_MASK_CONTROL);
+      XCB_KEY_BUT_MASK_SHIFT);
     break;
   case LKey:
     modifyRelatively(X, Window, MoveBy, 0, KeyPress->state &
-      XCB_KEY_BUT_MASK_CONTROL);
+      XCB_KEY_BUT_MASK_SHIFT);
     break;
   case PKey:
     system(WM_LOCK_COMMAND "&");
