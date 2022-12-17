@@ -38,7 +38,7 @@ static xcb_atom_t getAtom(xcb_connection_t * X, char const * Name) {
 }
 
 static void modifyRelatively(xcb_connection_t * X,
-  xcb_window_t const Window, int16_t const DeltaX, int16_t const DeltaY,
+  xcb_window_t const Window, int8_t const DeltaX, int8_t const DeltaY,
   bool const IsResizing) {
   xcb_get_geometry_reply_t * Reply;
   xcb_get_geometry_cookie_t Cookie;
@@ -441,7 +441,7 @@ int main(int const argc __attribute__((unused)),
    * dragging starts. */
   short Start[2];
   xcb_connection_t * X;
-  bool IsResizing;
+  bool IsResizing = false;
   xcb_query_tree_cookie_t QueryCookie;
   xcb_window_t Root;
   xcb_window_t Window;
