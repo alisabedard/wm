@@ -84,24 +84,17 @@ static void deleteWindow(xcb_connection_t * X, xcb_window_t const Window) {
 
 static void grabButton(xcb_connection_t * X, xcb_window_t const Root,
   uint8_t const Button) {
-  xcb_grab_button(X, 0, Root, XCB_EVENT_MASK_BUTTON_PRESS |
-    XCB_EVENT_MASK_BUTTON_RELEASE, XCB_GRAB_MODE_ASYNC,
-    XCB_GRAB_MODE_ASYNC, Root, XCB_NONE, Button, WM_MOD_MASK);
+#define GRAB_BUTTON(Mask) xcb_grab_button(X, 0, Root, \
+  XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE, \
+  XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, Root, XCB_NONE, Button, Mask);
+  GRAB_BUTTON(WM_MOD_MASK);
   /* Grab button if Num Lock is on.  */
-  xcb_grab_button(X, 0, Root, XCB_EVENT_MASK_BUTTON_PRESS |
-    XCB_EVENT_MASK_BUTTON_RELEASE, XCB_GRAB_MODE_ASYNC,
-    XCB_GRAB_MODE_ASYNC, Root, XCB_NONE, Button, WM_MOD_MASK |
-    XCB_MOD_MASK_2);
+  GRAB_BUTTON(WM_MOD_MASK | XCB_MOD_MASK_2);
   /* Grab button if Caps Lock is on.  */
-  xcb_grab_button(X, 0, Root, XCB_EVENT_MASK_BUTTON_PRESS |
-    XCB_EVENT_MASK_BUTTON_RELEASE, XCB_GRAB_MODE_ASYNC,
-    XCB_GRAB_MODE_ASYNC, Root, XCB_NONE, Button, WM_MOD_MASK |
-    XCB_MOD_MASK_LOCK);
+  GRAB_BUTTON(WM_MOD_MASK | XCB_MOD_MASK_LOCK);
   /* Grab button if Num Lock and Caps Lock are on.  */
-  xcb_grab_button(X, 0, Root, XCB_EVENT_MASK_BUTTON_PRESS |
-    XCB_EVENT_MASK_BUTTON_RELEASE, XCB_GRAB_MODE_ASYNC,
-    XCB_GRAB_MODE_ASYNC, Root, XCB_NONE, Button, WM_MOD_MASK |
-    XCB_MOD_MASK_2 | XCB_MOD_MASK_LOCK);
+  GRAB_BUTTON(WM_MOD_MASK | XCB_MOD_MASK_2 | XCB_MOD_MASK_LOCK);
+#undef GRAB_BUTTON
 }
 
 static void inductWindow(xcb_connection_t * X, xcb_window_t const Window) {
