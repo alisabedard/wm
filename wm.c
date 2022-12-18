@@ -20,7 +20,8 @@
 
 enum KeyCodeEnum {
   EscapeKey=9, TabKey=23, QKey=24, PKey=33,EnterKey=36, HKey=43, JKey=44,
-  KKey=45, LKey=46, ZKey=52, XKey=53, SpaceKey=65, UpKey=111, DownKey=116
+  KKey=45, LKey=46, ZKey=52, XKey=53, SpaceKey=65, UpKey=111, DownKey=116,
+  PeriodKey=60
 };
 
 static xcb_atom_t getAtom(xcb_connection_t * X, char const * Name) {
@@ -356,6 +357,11 @@ static inline void maximizeWindow(xcb_connection_t * X,
   Mask |= XCB_CONFIG_WINDOW_STACK_MODE;
   xcb_configure_window(X, Window, Mask, &Values);
 }
+static void shrinkWindow(xcb_connection_t * X, xcb_window_t const Window) {
+  uint32_t Values[] = {48,48};
+  uint32_t const Mask = XCB_CONFIG_WINDOW_HEIGHT | XCB_CONFIG_WINDOW_WIDTH;
+  xcb_configure_window(X, Window, Mask, &Values);
+}
 /* Window is needed as a parameter because KeyPress->event is always
  * the value of the root window.  Returning window allows the current
  * window to be changed, specifically when doing tab window switching.  */
@@ -416,6 +422,9 @@ static xcb_window_t handleKeyPress(xcb_connection_t * X,
     break;
   case UpKey:
     stack(X, Window, XCB_STACK_MODE_ABOVE);
+    break;
+  case PeriodKey:
+    shrinkWindow(X, Window);
     break;
   }
   return Window;
