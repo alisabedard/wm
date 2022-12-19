@@ -105,7 +105,7 @@ static void inductWindow(xcb_connection_t * X, xcb_window_t const Window) {
   xcb_map_window(X, Window);
 }
 
-static void processExisting(xcb_connection_t * X,
+static void processExistingClients(xcb_connection_t * X,
   xcb_query_tree_cookie_t const Cookie) {
   /* Get existing windows, listen for enter event for sloppy focus.  */
   {
@@ -129,7 +129,6 @@ static void processExisting(xcb_connection_t * X,
 #endif /* WM_DEBUG_XCB_QUERY_TREE */
     free(Query);
   }
-
 }
 
 static inline void stack(xcb_connection_t * X, xcb_window_t const Window,
@@ -436,39 +435,13 @@ static xcb_window_t handleMapRequest(xcb_connection_t * X,
   inductWindow(X, Window);
   return Window;
 }
-
-int main(int const argc __attribute__((unused)),
-  char const ** argv __attribute__((unused))) {
-  /* This is the offset from the top left corner of the window at which        
-   * dragging starts. */
-  short Start[2];
-  xcb_connection_t * X;
-  bool IsResizing = false;
-  xcb_query_tree_cookie_t QueryCookie;
-  xcb_window_t Root;
-  xcb_window_t Window;
-
-  /* Open connection. */
-  X = xcb_connect(NULL,NULL);
-  if (xcb_connection_has_error(X)) {
-    fputs("DISPLAY\n", stderr);
-    xcb_disconnect(X);
-    exit(1);
-  }
-  Root = getRoot(X);
-  /* Initialize Window.  */
-  Window = Root;
-  QueryCookie = xcb_query_tree(X, Root);
-  setEventMask(X, Root);
-
-  processExisting(X, QueryCookie);
-
-  /* Grab buttons. */
+static void grabButtons(xcb_connection_t * X, xcb_window_t const Root){
   grabButton(X, Root, 1);
   grabButton(X, Root, 2);
   grabButton(X, Root, 3);
+}
 
-  /* Grab keys. */
+static void grabKeys(xcb_connection_t * X, xcb_window_t const Root){
   xcb_grab_key(X, 1, Root, WM_MOD_MASK, XCB_GRAB_ANY, XCB_GRAB_MODE_ASYNC,
     XCB_GRAB_MODE_ASYNC);
   xcb_grab_key(X, 1, Root, WM_MOD_MASK | XCB_MOD_MASK_2, XCB_GRAB_ANY, 
@@ -485,8 +458,24 @@ int main(int const argc __attribute__((unused)),
     XCB_GRAB_ANY, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
   xcb_flush(X);
 
+}
 
-  /* Process events. */
+static xcb_connection_t * getXConnection() {
+  xcb_connection_t * X;
+  X = xcb_connect(NULL,NULL);
+  if (xcb_connection_has_error(X)) {
+    fputs("DISPLAY\n", stderr);
+    xcb_disconnect(X);
+    exit(1);
+  }
+  return X;
+}
+
+static void loopEvents(xcb_connection_t * X, xcb_window_t Window) {
+  /* This is the offset from the top left corner of the window at which
+   * dragging starts. */
+  short Start[2];
+  bool IsResizing=false;
   for (;;) {
     xcb_generic_event_t * Event;
     Event = xcb_wait_for_event(X);
@@ -517,6 +506,27 @@ int main(int const argc __attribute__((unused)),
     xcb_flush(X);
     free(Event);
   }
+}
+
+int main(int const argc __attribute__((unused)),
+  char const ** argv __attribute__((unused))) {
+  xcb_connection_t * X;
+  xcb_query_tree_cookie_t QueryCookie;
+  xcb_window_t Root;
+  /* Open connection. */
+  X = getXConnection();
+  Root = getRoot(X);
+  /* Launch query request, to be completed later. */
+  QueryCookie = xcb_query_tree(X, Root);
+  setEventMask(X, Root);
+  /* Finalize processing query of client tree. */
+  processExistingClients(X, QueryCookie);
+  /* Perform keyboard and mouse grabs. */
+  grabButtons(X, Root);
+  grabKeys(X, Root);
+  /* Process events. */
+  loopEvents(X, Root);
+  /* Clean. */
   xcb_disconnect(X);
   return 0;
 }
